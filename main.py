@@ -44,6 +44,10 @@ def exportar_pdf(resultados):
 
     # Título principal
     elements.append(Paragraph("Relatório Executivo de Vendas", titulo_style))
+    elements.append(Spacer(1, 0.2 * inch))
+    
+    # Equipe
+    elements.append(Paragraph("<b>Equipe:</b> Filipe Bruzaca e Julielison", normal_style))
     elements.append(Spacer(1, 0.5 * inch))
 
     

@@ -83,18 +83,34 @@ def gerar_imagem_grafico(df, caminho):
         return False
 
     import matplotlib.pyplot as plt
+    
+    # Função auxiliar para verificar se é valor monetário
+    def eh_monetario(nome_coluna):
+        termos_monetarios = ['vendas', 'margem', 'frete', 'desconto', 'total']
+        return any(termo in nome_coluna.lower() for termo in termos_monetarios)
+    
+    def formatar_label(nome_coluna):
+        label = nome_coluna.replace('_',' ').title()
+        if eh_monetario(nome_coluna):
+            label += " ($)"
+        return label
 
     # Se tiver 3 colunas (cliente, cidade, vendas)
     if len(df.columns) == 3:
         df = df.sort_values(by=df.columns[2], ascending=False).head(15)
         labels = (df.iloc[:, 0].astype(str) + " - " + df.iloc[:, 1].astype(str)).tolist()
         valores = df.iloc[:, 2].tolist()
+        col_valor = df.columns[2]
         
         plt.figure(figsize=(12, 8))
-        plt.barh(labels, valores)
-        plt.xlabel(df.columns[2].replace('_',' ').title())
+        bars = plt.barh(labels, valores)
+        plt.xlabel(formatar_label(col_valor))
         plt.ylabel("Cliente - Cidade")
         plt.gca().invert_yaxis()  # Maior valor no topo
+        
+        # Adicionar valores nas barras horizontais
+        for i, (bar, valor) in enumerate(zip(bars, valores)):
+            plt.text(valor, i, f' {valor:,.0f}', va='center', fontsize=8)
     else:
         x = df.iloc[:, 0]
         y = df.iloc[:, 1]
@@ -104,16 +120,25 @@ def gerar_imagem_grafico(df, caminho):
         # Se for ano (temporal)
         if str(x.name).lower() in ["ano"]:
             plt.plot(x, y, marker='o')
+            # Adicionar valores nos pontos da linha
+            for i, (xi, yi) in enumerate(zip(x, y)):
+                plt.text(xi, yi, f'{yi:,.0f}', ha='center', va='bottom', fontsize=9)
         else:
             df = df.sort_values(by=df.columns[1], ascending=False)
             x = df.iloc[:, 0]
             y = df.iloc[:, 1]
-            plt.bar(x, y)
+            bars = plt.bar(x, y)
+            
+            # Adicionar valores nas barras verticais
+            for bar in bars:
+                height = bar.get_height()
+                plt.text(bar.get_x() + bar.get_width()/2., height,
+                        f'{height:,.0f}', ha='center', va='bottom', fontsize=8)
 
     if len(df.columns) != 3:
         plt.title(f"{y.name.replace('_',' ').title()} por {x.name.replace('_',' ').title()}")
         plt.xlabel(x.name.replace('_',' ').title())
-        plt.ylabel(y.name.replace('_',' ').title())
+        plt.ylabel(formatar_label(y.name))
         plt.xticks(rotation=45, ha='right')
         
         # Formatação numérica apenas para gráficos sem 3 colunas

@@ -18,6 +18,20 @@ from reportlab.lib import colors
 import matplotlib.pyplot as plt
 import os
 
+# Perguntas do relatório
+PERGUNTAS = {
+    "1": "Quem são os meus 10 maiores clientes, em termos de vendas ($)?",
+    "2": "Quais os três maiores países, em termos de vendas ($)?",
+    "3": "Quais as categorias de produtos que geram maior faturamento (vendas $) no Brasil?",
+    "4": "Qual a despesa com frete envolvendo cada transportadora?",
+    "5": "Quais são os principais clientes (vendas $) do segmento \"Calçados Masculinos\" (Men's Footwear) na Alemanha?",
+    "6": "Quais os vendedores que mais dão descontos nos Estados Unidos?",
+    "7": "Quais os fornecedores que dão a maior margem de lucro ($) no segmento de \"Vestuário Feminino\" (Womens wear)?",
+    "8": "Quanto que foi vendido ($) no ano de 2009? Analisando as vendas anuais entre 2009 e 2012, podemos concluir que o faturamento vem crescendo, se mantendo estável ou decaindo?",
+    "9": "Quais são os principais clientes (vendas $) do segmento \"Calçados Masculinos\" (Men's Footwear) no ano de 2013. Para quais cidades houve venda e quanto?",
+    "10": "Na Europa, quanto que se vende ($) para cada país?"
+}
+
 
 def exportar_pdf(resultados):
 
@@ -35,21 +49,28 @@ def exportar_pdf(resultados):
     
     for chave, df in resultados.items():
 
+        # Pergunta
+        if chave in PERGUNTAS:
+            elements.append(Paragraph(f"<b>Questão {chave}:</b> {PERGUNTAS[chave]}", normal_style))
+            elements.append(Spacer(1, 0.2 * inch))
+
         # Título da seção
         elements.append(Paragraph(f"Análise {chave}", styles["Heading2"]))
         elements.append(Spacer(1, 0.2 * inch))
 
         # Texto explicativo
-        texto = gerar_descricao(df)
+        texto = gerar_descricao(df, chave)
         elements.append(Paragraph(texto, normal_style))
         elements.append(Spacer(1, 0.3 * inch))
 
         # Gerar gráfico temporário
         nome_img = f"grafico_{chave}.png"
 
-        gerar_imagem_grafico(df, nome_img)
-
-        elements.append(Image(nome_img, width=5.5 * inch, height=3.5 * inch))
+        if gerar_imagem_grafico(df, nome_img):
+            elements.append(Image(nome_img, width=5.5 * inch, height=3.5 * inch))
+        else:
+            elements.append(Paragraph("Gráfico não disponível (dados insuficientes)", normal_style))
+        
         elements.append(PageBreak())
 
     doc.build(elements)
@@ -100,7 +121,7 @@ def gerar_imagem_grafico(df, caminho):
             plt.FuncFormatter(lambda val, _: f"{val:,.0f}")
         )
     else:
-        plt.title("Total de Vendas por Cliente e Cidade")
+        plt.title("Total de Vendas por Cliente e Cidade\nSegmento: Men's Footwear - Ano: 2011")
         
         # Formatação numérica no eixo X (valores) para gráficos com 3 colunas
         plt.gca().xaxis.set_major_formatter(
@@ -116,13 +137,23 @@ def gerar_imagem_grafico(df, caminho):
     return True
 
 
-def gerar_descricao(df):
+def gerar_descricao(df, chave=None):
 
     if df.empty:
+        if chave == "9":
+            return "Não há dados disponíveis para o ano especificado (2013) na categoria Men's Footwear."
         return "Não houve registros suficientes para gerar análise."
 
-    x_col = df.columns[0]
-    y_col = df.columns[1]
+    # Faz cópia para não modificar o DataFrame original
+    df = df.copy()
+    
+    # Para DataFrames com 3 colunas (cliente, cidade, vendas), usar a última coluna
+    if len(df.columns) == 3:
+        x_col = df.columns[0]
+        y_col = df.columns[2]
+    else:
+        x_col = df.columns[0]
+        y_col = df.columns[1]
 
     # Força conversão para numérico
     df[y_col] = pd.to_numeric(df[y_col], errors='coerce')
@@ -206,6 +237,7 @@ def extrair(caminho_arquivo):
 
 def normalizar_dados(df):
     
+    df = df.copy()
     df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
 
     df = df.dropna(how="all")
@@ -442,7 +474,7 @@ SELECT
     SUM(vendas) AS total_vendas
 FROM vendas_globais
 WHERE categorianome = 'Men´s Footwear'
-AND strftime('%Y', data) = '2011'
+AND strftime('%Y', data) = '2013'
 GROUP BY clientenome, clientecidade
 ORDER BY total_vendas DESC
 """,

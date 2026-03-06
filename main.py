@@ -63,30 +63,49 @@ def gerar_imagem_grafico(df, caminho):
 
     import matplotlib.pyplot as plt
 
-    x = df.iloc[:, 0]
-    y = df.iloc[:, 1]
-
-    plt.figure(figsize=(10, 5))
-
-    # Se for ano (temporal)
-    if str(x.name).lower() in ["ano"]:
-        plt.plot(x, y, marker='o')
+    # Se tiver 3 colunas (cliente, cidade, vendas)
+    if len(df.columns) == 3:
+        df = df.sort_values(by=df.columns[2], ascending=False).head(15)
+        labels = (df.iloc[:, 0].astype(str) + " - " + df.iloc[:, 1].astype(str)).tolist()
+        valores = df.iloc[:, 2].tolist()
+        
+        plt.figure(figsize=(12, 8))
+        plt.barh(labels, valores)
+        plt.xlabel(df.columns[2].replace('_',' ').title())
+        plt.ylabel("Cliente - Cidade")
+        plt.gca().invert_yaxis()  # Maior valor no topo
     else:
-        df = df.sort_values(by=df.columns[1], ascending=False)
         x = df.iloc[:, 0]
         y = df.iloc[:, 1]
-        plt.bar(x, y)
 
-    plt.title(f"{y.name.replace('_',' ').title()} por {x.name.replace('_',' ').title()}")
-    plt.xlabel(x.name.replace('_',' ').title())
-    plt.ylabel(y.name.replace('_',' ').title())
+        plt.figure(figsize=(10, 5))
 
-    plt.xticks(rotation=45, ha='right')
+        # Se for ano (temporal)
+        if str(x.name).lower() in ["ano"]:
+            plt.plot(x, y, marker='o')
+        else:
+            df = df.sort_values(by=df.columns[1], ascending=False)
+            x = df.iloc[:, 0]
+            y = df.iloc[:, 1]
+            plt.bar(x, y)
 
-    # Formatação numérica
-    plt.gca().yaxis.set_major_formatter(
-        plt.FuncFormatter(lambda val, _: f"{val:,.0f}")
-    )
+    if len(df.columns) != 3:
+        plt.title(f"{y.name.replace('_',' ').title()} por {x.name.replace('_',' ').title()}")
+        plt.xlabel(x.name.replace('_',' ').title())
+        plt.ylabel(y.name.replace('_',' ').title())
+        plt.xticks(rotation=45, ha='right')
+        
+        # Formatação numérica apenas para gráficos sem 3 colunas
+        plt.gca().yaxis.set_major_formatter(
+            plt.FuncFormatter(lambda val, _: f"{val:,.0f}")
+        )
+    else:
+        plt.title("Total de Vendas por Cliente e Cidade")
+        
+        # Formatação numérica no eixo X (valores) para gráficos com 3 colunas
+        plt.gca().xaxis.set_major_formatter(
+            plt.FuncFormatter(lambda val, _: f"{val:,.0f}")
+        )
 
     plt.tight_layout()
     plt.grid(axis='y', linestyle='--', alpha=0.4)
@@ -460,6 +479,16 @@ def main():
 
     conn = carregar_db(tabelas)
     resultados = executar_queries(conn, QUERIES)
+
+    # Exibir resultado da consulta 9
+    print("\n" + "="*80)
+    print("RESULTADO DA CONSULTA 9:")
+    print("="*80)
+    print(resultados["9"].to_string(index=False))
+    print("="*80)
+    print(f"Total de clientes: {len(resultados['9'])}")
+    print(f"Total de vendas: ${resultados['9']['total_vendas'].sum():,.2f}")
+    print("="*80 + "\n")
 
     # for chave, df in resultados.items():
     #     plot_resultado(df)
